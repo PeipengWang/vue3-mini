@@ -1,5 +1,19 @@
 <template>
   <div class="container">
+    <!-- 新增：计算类型下拉选择框 -->
+    <div class="calc-type-selector" style="margin-bottom: 16px;">
+      <span style="margin-right: 8px; font-weight: 500;">计算类型：</span>
+      <el-select
+          v-model="calcType"
+          size="default"
+          style="width: 200px;"
+          @change="handleCalcTypeChange"
+      >
+        <el-option label="普通计算" value="normal" />
+        <el-option label="提前还款计算" value="prepayment" />
+      </el-select>
+    </div>
+
     <!-- Element Plus 多 Tab 组件 -->
     <el-tabs
         v-model="activeTab"
@@ -8,16 +22,18 @@
         style="margin-bottom: 20px;"
     >
       <el-tab-pane label="等额本金" name="equal-principal">
-        <!-- 表单组件：不同 Tab 复用同一个表单，仅调整请求接口 -->
+        <!-- 表单组件：新增 visible-prepayment 属性控制提前还款显隐 -->
         <CalculatorForm
             @calculate="handleCalculate"
             @reset="handleReset"
+            :visible-prepayment="showPrepaymentForm"
         />
       </el-tab-pane>
       <el-tab-pane label="等额本息" name="equal-interest">
         <CalculatorForm
             @calculate="handleCalculate"
             @reset="handleReset"
+            :visible-prepayment="showPrepaymentForm"
         />
       </el-tab-pane>
       <!-- 可扩展更多 Tab，比如“先息后本” -->
@@ -25,6 +41,7 @@
         <CalculatorForm
           @calculate="handleCalculate"
           @reset="handleReset"
+          :visible-prepayment="showPrepaymentForm"
         />
       </el-tab-pane> -->
     </el-tabs>
@@ -41,11 +58,10 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import CalculatorForm from './components/CalculatorForm.vue'
 import CalculatorResult from './components/CalculatorResult.vue'
-// 确保已全局引入 Element Plus 的 ElMessage/ElTabs/ElTabPane，若未全局引入需单独导入
-// import { ElMessage, ElTabs, ElTabPane } from 'element-plus'
+// 已全局引入 Element Plus，无需重复导入 ElMessage/ElTabs 等
 
 // 全局配置
 const CONFIG = {
@@ -53,6 +69,13 @@ const CONFIG = {
   // baseURL: 'http://154.8.237.182:8080',
   timeout: 5000
 }
+
+// 1. 新增：计算类型（默认普通计算）
+const calcType = ref('normal') // normal:普通计算，prepayment:提前还款计算
+// 2. 新增：计算提前还款表单显隐（计算类型为prepayment时显示）
+const showPrepaymentForm = computed(() => {
+  return calcType.value === 'prepayment'
+})
 
 // 绑定当前激活的 Tab（对应不同的还款方式）
 const activeTab = ref('equal-principal') // 默认选中“等额本金”
@@ -71,11 +94,25 @@ const yearlySummaries = ref([])
 const loading = ref(false)
 const showResult = ref(false)
 
-// 重置结果（和原有逻辑一致）
+// 新增：切换计算类型时重置结果和表单
+const handleCalcTypeChange = () => {
+  handleReset()
+}
+
+// 重置结果（扩展：清空结果数据）
 const handleReset = () => {
   showResult.value = false
-  // 可选：重置表单数据（如果需要）
-  // 可通过给 CalculatorForm 传 ref，调用其内部的重置方法
+  // 清空结果数据，避免切换类型后残留
+  Object.assign(summary, {
+    loanTotal: '-',
+    years: '-',
+    totalMonths: '-',
+    totalAllPrincipal: '-',
+    totalAllInterest: '-',
+    totalAllRepay: '-'
+  })
+  monthlyDetails.value = []
+  yearlySummaries.value = []
 }
 
 // 切换 Tab 时重置结果展示
@@ -155,6 +192,12 @@ const handleCalculate = (params) => {
   padding: 20px;
 }
 
+/* 计算类型选择器样式 */
+.calc-type-selector {
+  display: flex;
+  align-items: center;
+}
+
 /* 可选：调整 Tab 样式，和页面更适配 */
 :deep(.el-tabs__header) {
   margin-bottom: 20px;
@@ -162,5 +205,10 @@ const handleCalculate = (params) => {
 
 :deep(.el-tabs__content) {
   padding: 0;
+}
+
+/* 调整下拉框样式，和页面更协调 */
+:deep(.el-select) {
+  --el-select-input-height: 32px;
 }
 </style>

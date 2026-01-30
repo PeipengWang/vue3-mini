@@ -1,5 +1,6 @@
 <template>
-  <div class="prepayment-section">
+  <!-- 整体显隐控制：由父组件传入的 visible 属性决定 -->
+  <div class="prepayment-section" v-show="visible">
     <!-- 周期性提前还款设置 -->
     <el-form-item label="周期性提前还款">
       <!-- 外层容器：消除默认间距，确保一行展示 -->
@@ -74,12 +75,12 @@
       </div>
     </el-form-item>
 
-    <!-- 原有一次性提前还款（保留） -->
+    <!-- 一次性提前还款 -->
     <el-form-item label="一次性提前还款">
       <el-button type="primary" size="small" @click="addPrepayment">添加单次还款</el-button>
     </el-form-item>
 
-    <!-- 一次性提前还款表格（保留） -->
+    <!-- 一次性提前还款表格 -->
     <el-form-item>
       <el-table
           :data="prepayments"
@@ -123,7 +124,7 @@
       </el-table>
     </el-form-item>
 
-    <!-- 周期性提前还款表格（新增） -->
+    <!-- 周期性提前还款表格 -->
     <el-form-item label="已添加周期还款">
       <el-table
           :data="periodicRepayList"
@@ -160,13 +161,19 @@
 import { reactive, ref, defineProps, defineEmits, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 
-// 定义接收的props（父组件传递的初始化数据，可选）
+// 定义接收的Props
 const props = defineProps({
-  // 允许父组件传入初始化的提前还款数据
+  // 控制组件整体显隐（核心新增）
+  visible: {
+    type: Boolean,
+    default: true
+  },
+  // 初始化一次性提前还款数据
   initPrepayments: {
     type: Array,
     default: () => []
   },
+  // 初始化周期性提前还款数据
   initPeriodicRepayList: {
     type: Array,
     default: () => []
@@ -175,12 +182,12 @@ const props = defineProps({
 
 // 定义向外暴露的事件
 const emit = defineEmits([
-  'update:prepayments', // 一次性还款列表更新
+  'update:prepayments',    // 一次性还款列表更新
   'update:periodicRepayList', // 周期还款列表更新
   'reset' // 重置事件
 ])
 
-// 临时周期还款输入数据
+// 临时存储周期还款的输入数据
 const periodicRepay = reactive({
   startMonth: '',
   endMonth: '',
@@ -190,31 +197,33 @@ const periodicRepay = reactive({
 
 // 一次性提前还款列表（双向绑定）
 const prepayments = ref([...props.initPrepayments])
-// 周期还款列表（双向绑定）
+// 周期性提前还款列表（双向绑定）
 const periodicRepayList = ref([...props.initPeriodicRepayList])
 
-// 监听列表变化，向父组件同步数据
+// 监听一次性还款列表变化，同步到父组件
 watch(prepayments, (newVal) => {
   emit('update:prepayments', newVal)
 }, { deep: true })
 
+// 监听周期还款列表变化，同步到父组件
 watch(periodicRepayList, (newVal) => {
   emit('update:periodicRepayList', newVal)
 }, { deep: true })
 
-// 添加一次性提前还款行
+// 新增：添加一次性提前还款行
 const addPrepayment = () => {
   prepayments.value.push({ month: '', amount: '' })
 }
 
-// 删除一次性提前还款行
+// 新增：删除一次性提前还款行
 const deletePrepayment = (index) => {
   prepayments.value.splice(index, 1)
 }
 
-// 添加周期性提前还款
+// 新增：添加周期性提前还款
 const addPeriodicRepay = () => {
   const { startMonth, endMonth, cycleMonths, amount } = periodicRepay
+
   // 基础校验
   if (!startMonth || !endMonth || !cycleMonths || !amount) {
     ElMessage.error('请填写完整的周期还款信息（开始/结束月份、周期、金额）')
@@ -228,34 +237,40 @@ const addPeriodicRepay = () => {
     ElMessage.error('开始月份不能大于结束月份')
     return
   }
-  // 添加到列表
+
+  // 添加到周期还款列表
   periodicRepayList.value.push({
     startMonth: Number(startMonth),
     endMonth: Number(endMonth),
     cycleMonths: Number(cycleMonths),
     amount: Number(amount)
   })
+
   // 清空临时输入框
   periodicRepay.startMonth = ''
   periodicRepay.endMonth = ''
   periodicRepay.cycleMonths = ''
   periodicRepay.amount = ''
+
   ElMessage.success('周期还款规则添加成功')
 }
 
-// 删除周期性提前还款
+// 新增：删除周期性提前还款
 const deletePeriodicRepay = (index) => {
   periodicRepayList.value.splice(index, 1)
 }
 
-// 重置提前还款相关数据
+// 重置提前还款相关所有数据
 const resetPrepayment = () => {
+  // 清空临时输入
   periodicRepay.startMonth = ''
   periodicRepay.endMonth = ''
   periodicRepay.cycleMonths = ''
   periodicRepay.amount = ''
+  // 清空列表
   prepayments.value = []
   periodicRepayList.value = []
+  // 通知父组件重置
   emit('reset')
 }
 

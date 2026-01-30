@@ -61,14 +61,9 @@
 import { ref, reactive, computed } from 'vue'
 import CalculatorForm from './components/CalculatorForm.vue'
 import CalculatorResult from './components/CalculatorResult.vue'
+// 新增：导入抽离后的配置（路径根据实际目录调整）
+import { CONFIG, API_PATH } from './config/api.config.js'
 // 已全局引入 Element Plus，无需重复导入 ElMessage/ElTabs 等
-
-// 全局配置
-const CONFIG = {
-  baseURL: 'http://localhost:8080',
-  // baseURL: 'http://154.8.237.182:8080',
-  timeout: 5000
-}
 
 // 1. 新增：计算类型（默认普通计算）
 const calcType = ref('normal') // normal:普通计算，prepayment:提前还款计算
@@ -163,10 +158,13 @@ const handleCalculate = (params) => {
     default:
       apiPath = 'equal-principal'
   }
+  // 优化：用导入的 CONFIG + API_PATH 拼接（更易维护）
+  const fullUrl = `${CONFIG.baseURL}${API_PATH.repay}/${apiPath}`
+  // 原写法：`${CONFIG.baseURL}/demo/api/repay/${apiPath}`
 
   // 发送请求（动态接口地址）
   requestPost(
-      `${CONFIG.baseURL}/demo/api/repay/${apiPath}`,
+      fullUrl,
       params,
       (res) => {
         loading.value = false

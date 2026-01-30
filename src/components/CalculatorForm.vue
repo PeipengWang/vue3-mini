@@ -1,5 +1,5 @@
 <template>
-  <el-card shadow="hover" header="等额本金还款计算器">
+  <el-card shadow="hover" header="还款计算器">
     <!-- 表单容器 -->
     <el-form :model="form" label-width="120px" ref="formRef">
       <!-- 原有基础参数 -->
@@ -211,7 +211,7 @@ import { reactive, ref, defineEmits } from 'vue'
 import { ElMessage } from 'element-plus'
 
 // 定义事件：向父组件传递计算参数
-const emit = defineEmits(['calculate', 'reset'])
+const emit = defineEmits(['calculate', 'reset'])  //声明组件会 emit 哪些事件
 
 // 表单校验规则（可选，Element Plus 自带）
 const formRef = ref(null)

@@ -1,12 +1,35 @@
 <template>
   <div class="container">
-    <!-- 提示框：Element Plus 自带的 Message 已替代原生 alert -->
-    <!-- 表单组件 -->
-    <CalculatorForm
-        @calculate="handleCalculate"
-        @reset="handleReset"
-    />
-    <!-- 结果组件 -->
+    <!-- Element Plus 多 Tab 组件 -->
+    <el-tabs
+        v-model="activeTab"
+        type="card"
+        @tab-change="handleTabChange"
+        style="margin-bottom: 20px;"
+    >
+      <el-tab-pane label="等额本金" name="equal-principal">
+        <!-- 表单组件：不同 Tab 复用同一个表单，仅调整请求接口 -->
+        <CalculatorForm
+            @calculate="handleCalculate"
+            @reset="handleReset"
+        />
+      </el-tab-pane>
+      <el-tab-pane label="等额本息" name="equal-interest">
+        <CalculatorForm
+            @calculate="handleCalculate"
+            @reset="handleReset"
+        />
+      </el-tab-pane>
+      <!-- 可扩展更多 Tab，比如“先息后本” -->
+      <!-- <el-tab-pane label="先息后本" name="interest-first">
+        <CalculatorForm
+          @calculate="handleCalculate"
+          @reset="handleReset"
+        />
+      </el-tab-pane> -->
+    </el-tabs>
+
+    <!-- 结果组件：所有 Tab 共用一个结果展示区域 -->
     <CalculatorResult
         :summary="summary"
         :monthlyDetails="monthlyDetails"
@@ -21,6 +44,8 @@
 import { ref, reactive } from 'vue'
 import CalculatorForm from './components/CalculatorForm.vue'
 import CalculatorResult from './components/CalculatorResult.vue'
+// 确保已全局引入 Element Plus 的 ElMessage/ElTabs/ElTabPane，若未全局引入需单独导入
+// import { ElMessage, ElTabs, ElTabPane } from 'element-plus'
 
 // 全局配置
 const CONFIG = {
@@ -29,7 +54,10 @@ const CONFIG = {
   timeout: 5000
 }
 
-// 结果数据
+// 绑定当前激活的 Tab（对应不同的还款方式）
+const activeTab = ref('equal-principal') // 默认选中“等额本金”
+
+// 结果数据（和原有逻辑一致）
 const summary = reactive({
   loanTotal: '-',
   years: '-',
@@ -43,12 +71,19 @@ const yearlySummaries = ref([])
 const loading = ref(false)
 const showResult = ref(false)
 
-// 重置结果
+// 重置结果（和原有逻辑一致）
 const handleReset = () => {
   showResult.value = false
+  // 可选：重置表单数据（如果需要）
+  // 可通过给 CalculatorForm 传 ref，调用其内部的重置方法
 }
 
-// 原生 AJAX 请求（可替换为 Axios，需安装：npm install axios）
+// 切换 Tab 时重置结果展示
+const handleTabChange = () => {
+  handleReset() // 切换 Tab 清空之前的计算结果
+}
+
+// 原生 AJAX 请求（保留原有逻辑）
 const requestPost = (url, data, success, error) => {
   const xhr = new XMLHttpRequest()
   xhr.open('POST', url, true)
@@ -73,12 +108,28 @@ const requestPost = (url, data, success, error) => {
   xhr.send(JSON.stringify(data))
 }
 
-// 处理计算请求
+// 处理计算请求（核心改造：根据当前 Tab 动态切换接口）
 const handleCalculate = (params) => {
   loading.value = true
-  // 发送请求
+  // 根据激活的 Tab 拼接不同的接口地址
+  let apiPath = ''
+  switch (activeTab.value) {
+    case 'equal-principal':
+      apiPath = 'equal-principal' // 等额本金接口
+      break
+    case 'equal-interest':
+      apiPath = 'equal-interest' // 等额本息接口（需后端对应实现）
+      break
+      // case 'interest-first':
+      //   apiPath = 'interest-first' // 先息后本接口（扩展用）
+      //   break
+    default:
+      apiPath = 'equal-principal'
+  }
+
+  // 发送请求（动态接口地址）
   requestPost(
-      `${CONFIG.baseURL}/demo/api/repay/equal-principal`,
+      `${CONFIG.baseURL}/demo/api/repay/${apiPath}`,
       params,
       (res) => {
         loading.value = false
@@ -102,5 +153,14 @@ const handleCalculate = (params) => {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
+}
+
+/* 可选：调整 Tab 样式，和页面更适配 */
+:deep(.el-tabs__header) {
+  margin-bottom: 20px;
+}
+
+:deep(.el-tabs__content) {
+  padding: 0;
 }
 </style>

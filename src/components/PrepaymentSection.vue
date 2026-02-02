@@ -4,7 +4,7 @@
     <!-- 周期性提前还款设置 -->
     <el-form-item label="周期性提前还款">
       <!-- 外层容器：消除默认间距，确保一行展示 -->
-      <div style="margin-left: 0; width: calc(100% - 120px); display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;">
+      <div style="margin-left: 0; width: calc(100% - 120px); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
         <!-- 开始月份 -->
         <div style="display: flex; align-items: center;">
           <span>从第</span>
@@ -87,7 +87,7 @@
           border
           style="width: calc(100% - 120px); margin-left: 120px; max-width: 800px;"
       >
-        <el-table-column label="月数">
+        <el-table-column label="月数" width="100">
           <template #default="scope">
             <el-input
                 v-model.number="scope.row.month"
@@ -99,7 +99,7 @@
             />
           </template>
         </el-table-column>
-        <el-table-column label="还款金额（元）">
+        <el-table-column label="还款金额（元）" width="150">
           <template #default="scope">
             <el-input
                 v-model.number="scope.row.amount"
@@ -110,7 +110,7 @@
             />
           </template>
         </el-table-column>
-        <el-table-column label="操作">
+        <el-table-column label="操作" width="80">
           <template #default="scope">
             <el-button
                 type="danger"
@@ -124,23 +124,38 @@
       </el-table>
     </el-form-item>
 
-    <!-- 周期性提前还款表格 -->
+    <!-- 周期性提前还款表格：新增起始月、结束月列 -->
     <el-form-item label="已添加周期还款">
       <el-table
           :data="periodicRepayList"
           border
           style="width: calc(100% - 120px); margin-left: 120px; max-width: 800px;"
       >
-        <el-table-column label="周期（月）" width="120">
+        <!-- 新增：起始月列 -->
+        <el-table-column label="起始月" width="100">
           <template #default="scope">
-            {{ scope.row.cycleMonths.toLocaleString('zh-CN', { minimumFractionDigits: 2 }) }} 个月
+            {{ scope.row.startMonth }} 月
           </template>
         </el-table-column>
+        <!-- 新增：结束月列 -->
+        <el-table-column label="结束月" width="100">
+          <template #default="scope">
+            {{ scope.row.endMonth }} 月
+          </template>
+        </el-table-column>
+        <!-- 周期月数列（保留，优化显示） -->
+        <el-table-column label="周期（月）" width="120">
+          <template #default="scope">
+            {{ scope.row.cycleMonths }} 个月
+          </template>
+        </el-table-column>
+        <!-- 还款金额列（保留，优化显示） -->
         <el-table-column label="每次还款金额（元）" width="180">
           <template #default="scope">
             {{ scope.row.amount.toLocaleString('zh-CN', { minimumFractionDigits: 2 }) }}
           </template>
         </el-table-column>
+        <!-- 操作列 -->
         <el-table-column label="操作" width="80">
           <template #default="scope">
             <el-button
@@ -283,5 +298,16 @@ defineExpose({
 <style scoped>
 .prepayment-section {
   margin-top: 16px;
+}
+
+/* 优化小屏适配：周期性还款输入行自动换行 */
+@media (max-width: 768px) {
+  .prepayment-section .el-form-item > div {
+    flex-wrap: wrap !important;
+  }
+  .prepayment-section .el-table {
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
 }
 </style>

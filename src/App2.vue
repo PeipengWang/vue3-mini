@@ -208,7 +208,8 @@ const form = reactive({
   loanTotal: '', // 贷款总额
   annualRate: '', // 年利率
   years: '', // 还款年限
-  prepayments: [] // 提前还款列表
+  prepayments: [], // 提前还款列表
+  reservedPrincipalNum: ''
 })
 
 // 结果数据
@@ -319,7 +320,7 @@ const calculate = () => {
   const loanTotalNum = Number(form.loanTotal)
   const annualRateNum = Number(form.annualRate)
   const yearsNum = Number(form.years)
-
+  const reservedPrincipalNum = Number(form.reservedPrincipal)
   if (loanTotalNum <= 0 || annualRateNum <= 0 || yearsNum <= 0) {
     showAlert('error', '贷款总额、年利率、还款年限必须大于0')
     return

@@ -1,55 +1,65 @@
 <template>
-  <el-card shadow="hover" header="房贷还款计算器">
-    <!-- 表单容器 -->
+  <el-card
+      shadow="hover"
+      header="房贷还款计算器"
+      class="calc-card"
+  >
+    <!-- 表单容器：绑定校验规则 + 统一尺寸 -->
     <el-form
         :model="form"
-        label-width="120px"
+        :rules="formRules"
         ref="formRef"
+        label-width="120px"
+        size="default"
     >
-      <!-- 基础贷款参数 - 贷款总额 -->
+      <!-- 贷款总额 -->
       <el-form-item label="贷款总额（元）" prop="loanTotal">
         <el-input
             v-model.number="form.loanTotal"
             type="number"
             step="0.01"
-            placeholder="请输入贷款总额，如1000000"
+            placeholder="请输入贷款总额，如 1000000"
+            clearable
         />
       </el-form-item>
 
-      <!-- 基础贷款参数 - 年利率 -->
+      <!-- 年利率 -->
       <el-form-item label="年利率（%）" prop="annualRate">
         <el-input
             v-model.number="form.annualRate"
             type="number"
             step="0.01"
-            placeholder="请输入年利率，如4.9"
+            placeholder="请输入年利率，如 4.9"
+            clearable
         />
       </el-form-item>
 
-      <!-- 基础贷款参数 - 还款年限 -->
+      <!-- 还款年限 -->
       <el-form-item label="还款年限" prop="years">
         <el-input
             v-model.number="form.years"
             type="number"
             min="1"
-            placeholder="请输入还款年限，如30"
+            placeholder="请输入还款年限，如 30"
+            clearable
         />
       </el-form-item>
 
-      <!-- 基础贷款参数 - 保留本金 -->
+      <!-- 保留本金 -->
       <el-form-item label="保留本金（元）" prop="reservedPrincipal">
         <el-input
             v-model.number="form.reservedPrincipal"
             type="number"
             step="0.01"
             min="0"
-            placeholder="请输入保留不还的本金金额，如10000（填0则不保留）"
+            placeholder="请输入保留不还的本金金额，如 10000（填 0 则不保留）"
+            clearable
         />
       </el-form-item>
 
-      <!-- 引入提前还款子组件（透传显隐控制） -->
+      <!-- 提前还款子组件：【关键修复】删除重复属性，规范书写 -->
       <PrepaymentSection
-          :visible="visiblePrepayment"
+          v-if="visiblePrepayment"
           v-model:prepayments="form.prepayments"
           v-model:periodicRepayList="form.periodicRepayList"
           @reset="handlePrepaymentReset"
@@ -57,18 +67,11 @@
       />
 
       <!-- 操作按钮区域 -->
-      <el-form-item>
-        <el-button
-            type="primary"
-            @click="handleCalculate"
-            style="margin-left: 120px;"
-        >
+      <el-form-item class="form-actions">
+        <el-button type="primary" @click="handleCalculate">
           计算还款明细
         </el-button>
-        <el-button
-            @click="handleReset"
-            style="margin-left: 10px;"
-        >
+        <el-button @click="handleReset">
           重置
         </el-button>
       </el-form-item>
@@ -79,127 +82,195 @@
 <script setup>
 import { reactive, ref, defineEmits, defineProps } from 'vue'
 import { ElMessage } from 'element-plus'
-// 引入拆分后的提前还款子组件
 import PrepaymentSection from './PrepaymentSection.vue'
 
-// 定义接收的Props（由父组件控制提前还款显隐）
+// Props 定义
 const props = defineProps({
   visiblePrepayment: {
     type: Boolean,
-    default: true // 默认显示提前还款模块
+    default: true
   }
 })
 
-// 定义向外触发的事件
+// 事件定义
 const emit = defineEmits(['calculate', 'reset'])
 
-// 表单Ref（用于表单校验，预留扩展）
-const formRef = ref(null)
-// 提前还款子组件Ref（用于调用其重置方法）
-const prepaymentSectionRef = ref(null)
+// 表单 Ref + 校验规则
+const formRef = ref()
+const prepaymentSectionRef = ref()
 
-// 表单核心数据（仅保留基础参数 + 提前还款列表）
-const form = reactive({
-  // 基础贷款参数
-  loanTotal: '',          // 贷款总额
-  annualRate: '',         // 年利率
-  years: '',              // 还款年限
-  reservedPrincipal: 0,   // 保留不还的本金（默认0）
-  // 提前还款相关（双向绑定子组件）
-  prepayments: [],        // 一次性提前还款列表
-  periodicRepayList: []   // 周期性提前还款列表
+// 表单校验规则
+const formRules = reactive({
+  loanTotal: [
+    { required: true, message: '请输入贷款总额', trigger: 'blur' },
+    { type: 'number', min: 0.01, message: '贷款总额必须大于 0', trigger: 'blur' }
+  ],
+  annualRate: [
+    { required: true, message: '请输入年利率', trigger: 'blur' },
+    { type: 'number', min: 0.01, message: '年利率必须大于 0', trigger: 'blur' }
+  ],
+  years: [
+    { required: true, message: '请输入还款年限', trigger: 'blur' },
+    { type: 'number', min: 1, message: '还款年限必须大于等于 1', trigger: 'blur' }
+  ],
+  reservedPrincipal: [
+    { type: 'number', min: 0, message: '保留本金必须大于等于 0', trigger: 'blur' }
+  ]
 })
 
-/**
- * 重置表单所有数据
- * 1. 重置基础贷款参数
- * 2. 调用子组件重置提前还款数据
- * 3. 通知父组件执行重置逻辑
- */
-const handleReset = () => {
-  // 重置基础参数
-  form.loanTotal = ''
-  form.annualRate = ''
-  form.years = ''
-  form.reservedPrincipal = 0
+// 表单数据
+const form = reactive({
+  loanTotal: '',
+  annualRate: '',
+  years: '',
+  reservedPrincipal: 0,
+  prepayments: [],
+  periodicRepayList: []
+})
 
-  // 调用提前还款子组件的重置方法
-  if (prepaymentSectionRef.value) {
-    prepaymentSectionRef.value.resetPrepayment()
+// 重置表单
+const handleReset = () => {
+  if (formRef.value) {
+    formRef.value.resetFields()
   }
 
-  // 通知父组件重置结果展示
+  prepaymentSectionRef.value?.resetPrepayment()
   emit('reset')
+  ElMessage.success('表单已重置')
 }
 
-/**
- * 处理提前还款子组件的重置事件（预留扩展）
- */
+// 提前还款子组件重置回调
 const handlePrepaymentReset = () => {
-  // 可在此添加额外的重置逻辑（如日志、状态更新等）
+  form.prepayments = []
+  form.periodicRepayList = []
 }
 
-/**
- * 提交计算逻辑
- * 1. 基础参数校验
- * 2. 整理参数格式
- * 3. 通知父组件执行计算请求
- */
-const handleCalculate = () => {
-  // 第一步：基础必填项校验
-  if (!form.loanTotal || !form.annualRate || !form.years) {
-    ElMessage.error('请填写必填项：贷款总额、年利率、还款年限')
+// 计算逻辑
+const handleCalculate = async () => {
+  // 表单校验
+  try {
+    await formRef.value.validate()
+  } catch (error) {
+    ElMessage.error('表单校验失败，请检查输入内容')
     return
   }
 
-  // 第二步：数值合法性转换与校验
+  // 数值转换
   const loanTotalNum = Number(form.loanTotal)
   const annualRateNum = Number(form.annualRate)
   const yearsNum = Number(form.years)
   const reservedPrincipalNum = Number(form.reservedPrincipal)
 
-  // 数值范围校验
-  if (loanTotalNum <= 0 || annualRateNum <= 0 || yearsNum <= 0) {
-    ElMessage.error('贷款总额、年利率、还款年限必须大于0')
+  // 保留本金特殊校验
+  if (reservedPrincipalNum >= loanTotalNum) {
+    ElMessage.error(`保留本金需小于贷款总额（${loanTotalNum} 元）`)
     return
   }
 
-  // 保留本金范围校验（不能≥贷款总额）
-  if (reservedPrincipalNum < 0 || reservedPrincipalNum >= loanTotalNum) {
-    ElMessage.error(`保留本金需≥0且＜贷款总额（${loanTotalNum}元）`)
-    return
-  }
-
-  // 第三步：整理参数格式（适配后端接口）
+  // 格式化参数
   const params = {
-    loanTotal: loanTotalNum,                // 贷款总额
-    annualRate: annualRateNum,              // 年利率
-    years: yearsNum,                        // 还款年限
-    reservedPrincipal: reservedPrincipalNum,// 保留不还的本金
-    // 一次性提前还款（过滤空数据，格式化类型）
+    loanTotal: loanTotalNum,
+    annualRate: annualRateNum,
+    years: yearsNum,
+    reservedPrincipal: reservedPrincipalNum,
     prepayments: form.prepayments
         .filter(item => item.month && item.amount)
         .map(item => ({
           month: Number(item.month),
           amount: Number(item.amount),
-          year: 0 // 兼容原有后端字段
+          year: 0
         })),
-    // 周期性提前还款列表
     periodicRepayList: form.periodicRepayList
   }
 
-  // 第四步：通知父组件执行计算请求
+  // 通知父组件计算
   emit('calculate', params)
+  ElMessage.info('正在计算，请稍候...')
 }
 </script>
 
 <style scoped>
-/* 基础容器样式，保持页面适配 */
-:deep(.el-form-item) {
-  margin-bottom: 16px;
+<style scoped>
+  /* 核心容器：基础样式 + 响应式最大宽度 */
+.calc-card {
+  /* 基础：最大宽度适配不同屏幕，小屏自动占满宽度 */
+  max-width: 1000px;
+  /* 最小宽度：避免小屏过度压缩 */
+  min-width: 320px;
+  /* 水平居中 */
+  margin: 0 auto;
+  /* 左右内边距：小屏时预留边距，避免内容贴边 */
+  padding: 0 16px;
+  /* 上下外边距：适配不同屏幕的间距 */
+  margin-top: 20px;
+  margin-bottom: 40px;
 }
 
+/* Element Plus 卡片内边距：响应式调整 */
 :deep(.el-card__body) {
-  padding: 20px;
+  padding: 24px;
+  /* 小屏（手机）时减小内边距，节省空间 */
+  @media (max-width: 768px) {
+    padding: 16px;
+  }
+}
+
+/* 表单项间距：响应式调整 */
+:deep(.el-form-item) {
+  margin-bottom: 20px;
+  /* 小屏时减小间距，节省垂直空间 */
+  @media (max-width: 768px) {
+    margin-bottom: 16px;
+  }
+}
+
+/* 按钮区域：核心响应式布局 */
+.form-actions {
+  display: flex;
+  justify-content: flex-start;
+  padding-left: 120px;
+  margin-top: 8px;
+  gap: 12px;
+
+  /* 断点1：平板/小屏电脑（≤992px） */
+  @media (max-width: 992px) {
+    padding-left: 80px;
+  }
+
+  /* 断点2：手机（≤768px）- 核心适配 */
+  @media (max-width: 768px) {
+    /* 按钮从横向排列改为纵向排列 */
+    flex-direction: column;
+    /* 取消左内边距，避免内容溢出 */
+    padding-left: 0;
+    /* 按钮宽度占满容器，更易点击 */
+    gap: 8px;
+  }
+
+  /* 断点3：超小屏手机（≤480px） */
+  @media (max-width: 480px) {
+    /* 进一步减小间距 */
+    gap: 6px;
+    margin-top: 4px;
+  }
+}
+
+/* 表单标签宽度：响应式调整（解决小屏标签换行问题） */
+:deep(.el-form-item__label) {
+  /* 小屏时减小标签宽度，避免内容挤压 */
+  @media (max-width: 768px) {
+    width: 80px !important;
+  }
+  @media (max-width: 480px) {
+    width: 60px !important;
+    font-size: 14px; /* 减小字体，节省空间 */
+  }
+}
+
+/* 输入框宽度：小屏占满容器 */
+:deep(.el-input) {
+  @media (max-width: 768px) {
+    width: 100% !important;
+  }
 }
 </style>

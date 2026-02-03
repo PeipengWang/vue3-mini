@@ -1,59 +1,69 @@
 <template>
   <div class="container">
-    <!-- 新增：计算类型下拉选择框 -->
-    <div class="calc-type-selector" style="margin-bottom: 16px;">
-      <span style="margin-right: 8px; font-weight: 500;">计算类型：</span>
-      <el-select
-          v-model="calcType"
-          size="default"
-          style="width: 200px;"
-          @change="handleCalcTypeChange"
-      >
-        <el-option label="普通计算" value="normal" />
-        <el-option label="提前还款计算" value="prepayment" />
-      </el-select>
-    </div>
-
-    <!-- Element Plus 多 Tab 组件 -->
+    <!-- 第一层 Tab：核心功能分类（房贷计算/收益统计） -->
     <el-tabs
-        v-model="activeTab"
+        v-model="mainTab"
         type="card"
-        @tab-change="handleTabChange"
-        style="margin-bottom: 20px;"
+        style="margin-bottom: 16px;"
+        @tab-change="handleMainTabChange"
     >
-      <el-tab-pane label="等额本金" name="equal-principal">
-        <!-- 表单组件：新增 visible-prepayment 属性控制提前还款显隐 -->
-        <CalculatorForm
-            @calculate="handleCalculate"
-            @reset="handleReset"
-            :visible-prepayment="showPrepaymentForm"
-        />
-      </el-tab-pane>
-      <el-tab-pane label="等额本息" name="equal-interest">
-        <CalculatorForm
-            @calculate="handleCalculate"
-            @reset="handleReset"
-            :visible-prepayment="showPrepaymentForm"
-        />
-      </el-tab-pane>
-      <!-- 可扩展更多 Tab，比如“先息后本” -->
-      <!-- <el-tab-pane label="先息后本" name="interest-first">
-        <CalculatorForm
-          @calculate="handleCalculate"
-          @reset="handleReset"
-          :visible-prepayment="showPrepaymentForm"
-        />
-      </el-tab-pane> -->
+      <el-tab-pane label="房贷还款计算" name="repay-calc"></el-tab-pane>
+      <el-tab-pane label="收益统计计算" name="income-calc"></el-tab-pane>
     </el-tabs>
 
-    <!-- 结果组件：所有 Tab 共用一个结果展示区域 -->
-    <CalculatorResult
-        :summary="summary"
-        :monthlyDetails="monthlyDetails"
-        :yearlySummaries="yearlySummaries"
-        :loading="loading"
-        :showResult="showResult"
-    />
+    <!-- 1. 房贷还款计算模块（原有功能完整保留） -->
+    <div v-if="mainTab === 'repay-calc'">
+      <!-- 计算类型下拉选择框 -->
+      <div class="calc-type-selector" style="margin-bottom: 16px;">
+        <span style="margin-right: 8px; font-weight: 500;">计算类型：</span>
+        <el-select
+            v-model="calcType"
+            size="default"
+            style="width: 200px;"
+            @change="handleCalcTypeChange"
+        >
+          <el-option label="普通计算" value="normal" />
+          <el-option label="提前还款计算" value="prepayment" />
+        </el-select>
+      </div>
+
+      <!-- 还款方式 Tab -->
+      <el-tabs
+          v-model="activeTab"
+          type="card"
+          @tab-change="handleTabChange"
+          style="margin-bottom: 20px;"
+      >
+        <el-tab-pane label="等额本金" name="equal-principal">
+          <CalculatorForm
+              @calculate="handleCalculate"
+              @reset="handleReset"
+              :visible-prepayment="showPrepaymentForm"
+          />
+        </el-tab-pane>
+        <el-tab-pane label="等额本息" name="equal-interest">
+          <CalculatorForm
+              @calculate="handleCalculate"
+              @reset="handleReset"
+              :visible-prepayment="showPrepaymentForm"
+          />
+        </el-tab-pane>
+      </el-tabs>
+
+      <!-- 房贷计算结果 -->
+      <CalculatorResult
+          :summary="summary"
+          :monthlyDetails="monthlyDetails"
+          :yearlySummaries="yearlySummaries"
+          :loading="loading"
+          :showResult="showResult"
+      />
+    </div>
+
+    <!-- 2. 收益统计计算模块（独立 Tab，不干扰原有功能） -->
+    <div v-if="mainTab === 'income-calc'">
+      <IncomeCalculator :visible="true" />
+    </div>
   </div>
 </template>
 
@@ -61,21 +71,22 @@
 import { ref, reactive, computed } from 'vue'
 import CalculatorForm from './components/CalculatorForm.vue'
 import CalculatorResult from './components/CalculatorResult.vue'
-// 新增：导入抽离后的配置（路径根据实际目录调整）
+// 新增：导入收益统计组件
+import IncomeCalculator from './components/IncomeCalculator.vue'
+// 导入配置（保留原有逻辑）
 import { CONFIG, API_PATH } from './config/api.config.js'
-// 已全局引入 Element Plus，无需重复导入 ElMessage/ElTabs 等
 
-// 1. 新增：计算类型（默认普通计算）
-const calcType = ref('normal') // normal:普通计算，prepayment:提前还款计算
-// 2. 新增：计算提前还款表单显隐（计算类型为prepayment时显示）
+// ========== 新增：核心功能 Tab 控制 ==========
+const mainTab = ref('repay-calc') // 默认显示房贷计算
+
+// ========== 原有房贷计算相关变量 ==========
+const calcType = ref('normal')
 const showPrepaymentForm = computed(() => {
   return calcType.value === 'prepayment'
 })
+const activeTab = ref('equal-principal')
 
-// 绑定当前激活的 Tab（对应不同的还款方式）
-const activeTab = ref('equal-principal') // 默认选中“等额本金”
-
-// 结果数据（和原有逻辑一致）
+// 结果数据
 const summary = reactive({
   loanTotal: '-',
   years: '-',
@@ -89,15 +100,20 @@ const yearlySummaries = ref([])
 const loading = ref(false)
 const showResult = ref(false)
 
-// 新增：切换计算类型时重置结果和表单
+// ========== 事件处理函数 ==========
+// 新增：切换核心功能 Tab 时重置所有结果
+const handleMainTabChange = () => {
+  handleReset() // 重置房贷计算结果
+}
+
+// 原有：计算类型切换
 const handleCalcTypeChange = () => {
   handleReset()
 }
 
-// 重置结果（扩展：清空结果数据）
+// 原有：重置结果
 const handleReset = () => {
   showResult.value = false
-  // 清空结果数据，避免切换类型后残留
   Object.assign(summary, {
     loanTotal: '-',
     years: '-',
@@ -110,12 +126,12 @@ const handleReset = () => {
   yearlySummaries.value = []
 }
 
-// 切换 Tab 时重置结果展示
+// 原有：切换还款方式 Tab
 const handleTabChange = () => {
-  handleReset() // 切换 Tab 清空之前的计算结果
+  handleReset()
 }
 
-// 原生 AJAX 请求（保留原有逻辑）
+// 原有：原生 AJAX 请求
 const requestPost = (url, data, success, error) => {
   const xhr = new XMLHttpRequest()
   xhr.open('POST', url, true)
@@ -140,29 +156,22 @@ const requestPost = (url, data, success, error) => {
   xhr.send(JSON.stringify(data))
 }
 
-// 处理计算请求（核心改造：根据当前 Tab 动态切换接口）
+// 原有：处理房贷计算请求
 const handleCalculate = (params) => {
   loading.value = true
-  // 根据激活的 Tab 拼接不同的接口地址
   let apiPath = ''
   switch (activeTab.value) {
     case 'equal-principal':
-      apiPath = 'equal-principal' // 等额本金接口
+      apiPath = 'equal-principal'
       break
     case 'equal-interest':
-      apiPath = 'equal-interest' // 等额本息接口（需后端对应实现）
+      apiPath = 'equal-interest'
       break
-      // case 'interest-first':
-      //   apiPath = 'interest-first' // 先息后本接口（扩展用）
-      //   break
     default:
       apiPath = 'equal-principal'
   }
-  // 优化：用导入的 CONFIG + API_PATH 拼接（更易维护）
   const fullUrl = `${CONFIG.baseURL}${API_PATH.repay}/${apiPath}`
-  // 原写法：`${CONFIG.baseURL}/demo/api/repay/${apiPath}`
 
-  // 发送请求（动态接口地址）
   requestPost(
       fullUrl,
       params,
@@ -196,7 +205,7 @@ const handleCalculate = (params) => {
   align-items: center;
 }
 
-/* 可选：调整 Tab 样式，和页面更适配 */
+/* Tab 样式优化 */
 :deep(.el-tabs__header) {
   margin-bottom: 20px;
 }
@@ -205,8 +214,13 @@ const handleCalculate = (params) => {
   padding: 0;
 }
 
-/* 调整下拉框样式，和页面更协调 */
+/* 下拉框样式 */
 :deep(.el-select) {
   --el-select-input-height: 32px;
+}
+
+/* 新增：核心功能 Tab 样式区分 */
+:deep(.el-tabs--card.el-tabs__header .el-tabs__item:first-child) {
+  margin-left: 0;
 }
 </style>

@@ -224,7 +224,7 @@
                 年度理财总收益：{{ incomeResult.annualIncome.totalIncome }} 元
               </div>
               <div class="type-item" style="background: #e8f4f8; font-weight: bold;">
-                年末收入：{{ calculateAnnualTotalBalance() }} 元
+                年末收入：{{  incomeResult.annualIncome.totalAllIncome }} 元
               </div>
               <div class="type-item" style="background: #e8f4f8; font-weight: bold;">
                 年末余额：{{ incomeResult.annualIncome.totalYearIncome }} 元

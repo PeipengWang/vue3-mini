@@ -180,6 +180,7 @@ const annualExpenseList = ref([
   { name: '老人养老金', amount: 0 },
   { name: '节日礼金', amount: 0 },
   { name: '人情往来', amount: 0 },
+  { name: '其他', amount: 0 },
 ])
 
 // 应急金计算结果
@@ -189,7 +190,7 @@ const emergencyResult = ref(null)
 const formRules = reactive({
   emergencyMultiple: [
     { required: true, message: '请输入应急金倍数', trigger: 'blur' },
-    { type: 'number', min: 3, max: 24, message: '倍数需在3-24个月之间', trigger: 'blur' }
+    { type: 'number', min: 1, max: 24, message: '倍数需在3-24个月之间', trigger: 'blur' }
   ]
 })
 

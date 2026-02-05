@@ -195,8 +195,9 @@ const handleCalculate = (params) => {
       (res) => {
         loading.value = false
         Object.assign(summary, res)
-        monthlyDetails.value = res.monthlyDetails || []
-        yearlySummaries.value = res.yearSummaries || []
+        monthlyDetails.value = res.fundMonthlyDetails || []
+        debugger;
+        yearlySummaries.value = res.fundYearSummaries || []
         showResult.value = true
         ElMessage.success('计算成功！')
       },

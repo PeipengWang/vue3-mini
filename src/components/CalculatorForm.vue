@@ -1,9 +1,5 @@
 <template>
-  <el-card
-      shadow="hover"
-      header="房贷还款计算器"
-      class="calc-card"
-  >
+  <el-card shadow="hover" header="房贷还款计算器" class="calc-card">
     <!-- 表单容器：绑定校验规则 + 统一尺寸 -->
     <el-form
         :model="form"
@@ -12,40 +8,82 @@
         label-width="120px"
         size="default"
     >
-      <!-- 贷款总额 -->
-      <el-form-item label="贷款总额（元）" prop="loanTotal">
-        <el-input
-            v-model.number="form.loanTotal"
-            type="number"
-            step="0.01"
-            placeholder="请输入贷款总额，如 1000000"
-            clearable
-        />
+      <!-- 贷款类型选择 -->
+      <el-form-item label="贷款类型" prop="loanType">
+        <el-radio-group v-model="form.loanType">
+          <el-radio label="combination">组合贷（商贷+公积金）</el-radio>
+          <el-radio label="single">纯商贷</el-radio>
+          <el-radio label="fund">纯公积金贷</el-radio>
+        </el-radio-group>
       </el-form-item>
 
-      <!-- 年利率 -->
-      <el-form-item label="年利率（%）" prop="annualRate">
-        <el-input
-            v-model.number="form.annualRate"
-            type="number"
-            step="0.01"
-            placeholder="请输入年利率，如 4.9"
-            clearable
-        />
-      </el-form-item>
+      <!-- 商业贷款参数：修复v-model绑定 -->
+      <el-collapse v-model="activeBusinessPanel" :disabled="form.loanType === 'fund'">
+        <el-collapse-item title="商业贷款参数" name="business">
+          <el-form-item label="商贷总额（元）" prop="businessLoanTotal">
+            <el-input
+                v-model.number="form.businessLoanTotal"
+                type="number"
+                step="0.01"
+                placeholder="请输入商贷总额，如 1000000"
+                clearable
+            />
+          </el-form-item>
+          <el-form-item label="商贷年利率（%）" prop="businessAnnualRate">
+            <el-input
+                v-model.number="form.businessAnnualRate"
+                type="number"
+                step="0.01"
+                placeholder="请输入商贷年利率，如 4.9"
+                clearable
+            />
+          </el-form-item>
+          <el-form-item label="商贷还款年限" prop="businessYears">
+            <el-input
+                v-model.number="form.businessYears"
+                type="number"
+                min="1"
+                placeholder="请输入商贷还款年限，如 30"
+                clearable
+            />
+          </el-form-item>
+        </el-collapse-item>
+      </el-collapse>
 
-      <!-- 还款年限 -->
-      <el-form-item label="还款年限" prop="years">
-        <el-input
-            v-model.number="form.years"
-            type="number"
-            min="1"
-            placeholder="请输入还款年限，如 30"
-            clearable
-        />
-      </el-form-item>
+      <!-- 公积金贷款参数：修复v-model绑定 -->
+      <el-collapse v-model="activeFundPanel" :disabled="form.loanType === 'single'">
+        <el-collapse-item title="公积金贷款参数" name="fund">
+          <el-form-item label="公积金贷总额（元）" prop="fundLoanTotal">
+            <el-input
+                v-model.number="form.fundLoanTotal"
+                type="number"
+                step="0.01"
+                placeholder="请输入公积金贷总额，如 500000"
+                clearable
+            />
+          </el-form-item>
+          <el-form-item label="公积金贷年利率（%）" prop="fundAnnualRate">
+            <el-input
+                v-model.number="form.fundAnnualRate"
+                type="number"
+                step="0.01"
+                placeholder="请输入公积金贷年利率，如 3.1"
+                clearable
+            />
+          </el-form-item>
+          <el-form-item label="公积金贷还款年限" prop="fundYears">
+            <el-input
+                v-model.number="form.fundYears"
+                type="number"
+                min="1"
+                placeholder="请输入公积金贷还款年限，如 30"
+                clearable
+            />
+          </el-form-item>
+        </el-collapse-item>
+      </el-collapse>
 
-      <!-- 保留本金 -->
+      <!-- 公共参数：保留本金 -->
       <el-form-item label="保留本金（元）" prop="reservedPrincipal">
         <el-input
             v-model.number="form.reservedPrincipal"
@@ -57,7 +95,7 @@
         />
       </el-form-item>
 
-      <!-- 提前还款子组件：【关键修复】删除重复属性，规范书写 -->
+      <!-- 提前还款子组件 -->
       <PrepaymentSection
           v-if="visiblePrepayment"
           v-model:prepayments="form.prepayments"
@@ -80,9 +118,14 @@
 </template>
 
 <script setup>
-import { reactive, ref, defineEmits, defineProps } from 'vue'
+import { reactive, ref, defineEmits, defineProps, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+// 请确保 PrepaymentSection 组件路径正确
 import PrepaymentSection from './PrepaymentSection.vue'
+
+// 新增：折叠面板激活状态（修复v-model语法错误）
+const activeBusinessPanel = ref(['business'])
+const activeFundPanel = ref(['fund'])
 
 // Props 定义
 const props = defineProps({
@@ -101,17 +144,76 @@ const prepaymentSectionRef = ref()
 
 // 表单校验规则
 const formRules = reactive({
-  loanTotal: [
-    { required: true, message: '请输入贷款总额', trigger: 'blur' },
-    { type: 'number', min: 0.01, message: '贷款总额必须大于 0', trigger: 'blur' }
+  loanType: [
+    { required: true, message: '请选择贷款类型', trigger: 'change' }
   ],
-  annualRate: [
-    { required: true, message: '请输入年利率', trigger: 'blur' },
-    { type: 'number', min: 0.01, message: '年利率必须大于 0', trigger: 'blur' }
+  // 商贷校验规则（动态校验）
+  businessLoanTotal: [
+    {
+      required: true,
+      message: '请输入商贷总额',
+      trigger: 'blur',
+      validator: (rule, value) => {
+        return form.loanType !== 'single' && form.loanType !== 'combination' || (value && value > 0)
+      }
+    },
+    { type: 'number', min: 0.01, message: '商贷总额必须大于 0', trigger: 'blur' }
   ],
-  years: [
-    { required: true, message: '请输入还款年限', trigger: 'blur' },
-    { type: 'number', min: 1, message: '还款年限必须大于等于 1', trigger: 'blur' }
+  businessAnnualRate: [
+    {
+      required: true,
+      message: '请输入商贷年利率',
+      trigger: 'blur',
+      validator: (rule, value) => {
+        return form.loanType !== 'single' && form.loanType !== 'combination' || (value && value > 0)
+      }
+    },
+    { type: 'number', min: 0.01, message: '商贷年利率必须大于 0', trigger: 'blur' }
+  ],
+  businessYears: [
+    {
+      required: true,
+      message: '请输入商贷还款年限',
+      trigger: 'blur',
+      validator: (rule, value) => {
+        return form.loanType !== 'single' && form.loanType !== 'combination' || (value && value >= 1)
+      }
+    },
+    { type: 'number', min: 1, message: '商贷还款年限必须大于等于 1', trigger: 'blur' }
+  ],
+  // 公积金贷校验规则（动态校验）
+  fundLoanTotal: [
+    {
+      required: true,
+      message: '请输入公积金贷总额',
+      trigger: 'blur',
+      validator: (rule, value) => {
+        return form.loanType !== 'fund' && form.loanType !== 'combination' || (value && value > 0)
+      }
+    },
+    { type: 'number', min: 0.01, message: '公积金贷总额必须大于 0', trigger: 'blur' }
+  ],
+  fundAnnualRate: [
+    {
+      required: true,
+      message: '请输入公积金贷年利率',
+      trigger: 'blur',
+      validator: (rule, value) => {
+        return form.loanType !== 'fund' && form.loanType !== 'combination' || (value && value > 0)
+      }
+    },
+    { type: 'number', min: 0.01, message: '公积金贷年利率必须大于 0', trigger: 'blur' }
+  ],
+  fundYears: [
+    {
+      required: true,
+      message: '请输入公积金贷还款年限',
+      trigger: 'blur',
+      validator: (rule, value) => {
+        return form.loanType !== 'fund' && form.loanType !== 'combination' || (value && value >= 1)
+      }
+    },
+    { type: 'number', min: 1, message: '公积金贷还款年限必须大于等于 1', trigger: 'blur' }
   ],
   reservedPrincipal: [
     { type: 'number', min: 0, message: '保留本金必须大于等于 0', trigger: 'blur' }
@@ -120,12 +222,44 @@ const formRules = reactive({
 
 // 表单数据
 const form = reactive({
-  loanTotal: '',
-  annualRate: '',
-  years: '',
+  loanType: 'combination', // 贷款类型：single(纯商贷)、fund(纯公积金)、combination(组合贷)
+  // 商贷参数
+  businessLoanTotal: '',
+  businessAnnualRate: '',
+  businessYears: '',
+  // 公积金贷参数
+  fundLoanTotal: '',
+  fundAnnualRate: '',
+  fundYears: '',
+  // 公共参数
   reservedPrincipal: 0,
   prepayments: [],
   periodicRepayList: []
+})
+
+// 监听贷款类型变化：自动切换面板状态 + 清空无关参数
+watch(() => form.loanType, (newType) => {
+  if (newType === 'single') {
+    // 纯商贷：展开商贷面板，收起公积金面板
+    activeBusinessPanel.value = ['business']
+    activeFundPanel.value = []
+    // 清空公积金参数
+    form.fundLoanTotal = ''
+    form.fundAnnualRate = ''
+    form.fundYears = ''
+  } else if (newType === 'fund') {
+    // 纯公积金：展开公积金面板，收起商贷面板
+    activeFundPanel.value = ['fund']
+    activeBusinessPanel.value = []
+    // 清空商贷参数
+    form.businessLoanTotal = ''
+    form.businessAnnualRate = ''
+    form.businessYears = ''
+  } else if (newType === 'combination') {
+    // 组合贷：展开两个面板
+    activeBusinessPanel.value = ['business']
+    activeFundPanel.value = ['fund']
+  }
 })
 
 // 重置表单
@@ -134,7 +268,19 @@ const handleReset = () => {
     formRef.value.resetFields()
   }
 
+  // 重置提前还款子组件
   prepaymentSectionRef.value?.resetPrepayment()
+
+  // 重置面板状态
+  activeBusinessPanel.value = ['business']
+  activeFundPanel.value = ['fund']
+
+  // 重置默认值
+  form.loanType = 'single'
+  form.reservedPrincipal = 0
+  form.prepayments = []
+  form.periodicRepayList = []
+
   emit('reset')
   ElMessage.success('表单已重置')
 }
@@ -155,24 +301,19 @@ const handleCalculate = async () => {
     return
   }
 
-  // 数值转换
-  const loanTotalNum = Number(form.loanTotal)
-  const annualRateNum = Number(form.annualRate)
-  const yearsNum = Number(form.years)
-  const reservedPrincipalNum = Number(form.reservedPrincipal)
-
-  // 保留本金特殊校验
-  if (reservedPrincipalNum >= loanTotalNum) {
-    ElMessage.error(`保留本金需小于贷款总额（${loanTotalNum} 元）`)
-    return
-  }
-
-  // 格式化参数
+  // 组装请求参数
   const params = {
-    loanTotal: loanTotalNum,
-    annualRate: annualRateNum,
-    years: yearsNum,
-    reservedPrincipal: reservedPrincipalNum,
+    loanType: form.loanType,
+    // 商贷参数
+    businessLoanTotal: Number(form.businessLoanTotal) || 0,
+    businessAnnualRate: Number(form.businessAnnualRate) || 0,
+    businessYears: Number(form.businessYears) || 0,
+    // 公积金贷参数
+    fundLoanTotal: Number(form.fundLoanTotal) || 0,
+    fundAnnualRate: Number(form.fundAnnualRate) || 0,
+    fundYears: Number(form.fundYears) || 0,
+    // 公共参数
+    reservedPrincipal: Number(form.reservedPrincipal),
     prepayments: form.prepayments
         .filter(item => item.month && item.amount)
         .map(item => ({
@@ -183,25 +324,26 @@ const handleCalculate = async () => {
     periodicRepayList: form.periodicRepayList
   }
 
-  // 通知父组件计算
+  // 保留本金校验（组合贷时校验总额）
+  const totalLoan = params.businessLoanTotal + params.fundLoanTotal
+  if (params.reservedPrincipal >= totalLoan && totalLoan > 0) {
+    ElMessage.error(`保留本金需小于贷款总额（${totalLoan} 元）`)
+    return
+  }
+
+  // 通知父组件计算（父组件需调用后端 /api/repay/combination-principal 接口）
   emit('calculate', params)
   ElMessage.info('正在计算，请稍候...')
 }
 </script>
 
 <style scoped>
-<style scoped>
-  /* 核心容器：基础样式 + 响应式最大宽度 */
+/* 核心容器：基础样式 + 响应式最大宽度 */
 .calc-card {
-  /* 基础：最大宽度适配不同屏幕，小屏自动占满宽度 */
   max-width: 1000px;
-  /* 最小宽度：避免小屏过度压缩 */
   min-width: 320px;
-  /* 水平居中 */
   margin: 0 auto;
-  /* 左右内边距：小屏时预留边距，避免内容贴边 */
   padding: 0 16px;
-  /* 上下外边距：适配不同屏幕的间距 */
   margin-top: 20px;
   margin-bottom: 40px;
 }
@@ -222,6 +364,18 @@ const handleCalculate = async () => {
   @media (max-width: 768px) {
     margin-bottom: 16px;
   }
+}
+
+/* 折叠面板样式优化 */
+:deep(.el-collapse-item__header) {
+  font-weight: 500;
+  padding: 12px 16px;
+  background-color: #f8f9fa;
+}
+
+:deep(.el-collapse-item__content) {
+  padding: 16px;
+  border-top: 1px solid #ebeef5;
 }
 
 /* 按钮区域：核心响应式布局 */
@@ -271,6 +425,17 @@ const handleCalculate = async () => {
 :deep(.el-input) {
   @media (max-width: 768px) {
     width: 100% !important;
+  }
+}
+
+/* 单选框组样式优化 */
+:deep(.el-radio-group) {
+  display: flex;
+  gap: 20px;
+  margin-top: 5px;
+  @media (max-width: 480px) {
+    flex-direction: column;
+    gap: 10px;
   }
 }
 </style>

@@ -1,6 +1,6 @@
 <template>
   <div class="container">
-    <!-- 第一层 Tab：核心功能分类（房贷计算/收益统计/支出计算） -->
+    <!-- 第一层 Tab：核心功能分类（新增应急能力计算Tab） -->
     <el-tabs
         v-model="mainTab"
         type="card"
@@ -9,8 +9,9 @@
     >
       <el-tab-pane label="房贷还款计算" name="repay-calc"></el-tab-pane>
       <el-tab-pane label="收益统计计算" name="income-calc"></el-tab-pane>
-      <!-- 新增：必要支出&应急金计算 Tab -->
       <el-tab-pane label="必要支出&应急金计算" name="expense-calc"></el-tab-pane>
+      <!-- 新增：应急能力计算 Tab -->
+      <el-tab-pane label="应急能力计算" name="emergency-ability-calc"></el-tab-pane>
     </el-tabs>
 
     <!-- 1. 房贷还款计算模块（原有功能完整保留） -->
@@ -62,14 +63,19 @@
       />
     </div>
 
-    <!-- 2. 收益统计计算模块（独立 Tab，不干扰原有功能） -->
+    <!-- 2. 收益统计计算模块（原有保留） -->
     <div v-if="mainTab === 'income-calc'">
       <IncomeCalculator :visible="true" />
     </div>
 
-    <!-- 新增：3. 必要支出&应急金计算模块 -->
+    <!-- 3. 必要支出&应急金计算模块（原有保留） -->
     <div v-if="mainTab === 'expense-calc'">
       <ExpenseCalculator :visible="true" />
+    </div>
+
+    <!-- 新增：4. 应急能力计算模块（独立Tab） -->
+    <div v-if="mainTab === 'emergency-ability-calc'">
+      <EmergencyAbilityCalculator :visible="true" />
     </div>
   </div>
 </template>
@@ -79,17 +85,18 @@ import { ref, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import CalculatorForm from './components/CalculatorForm.vue'
 import CalculatorResult from './components/CalculatorResult.vue'
-// 新增：导入支出计算组件
+// 原有组件
 import ExpenseCalculator from './components/ExpenseCalculator.vue'
-// 保留：导入收益统计组件
 import IncomeCalculator from './components/IncomeCalculator.vue'
+// 新增：导入应急能力计算组件
+import EmergencyAbilityCalculator from './components/EmergencyAbilityCalculator.vue'
 // 导入配置（保留原有逻辑）
 import { CONFIG, API_PATH } from './config/api.config.js'
 
-// ========== 核心功能 Tab 控制（新增支出计算 Tab） ==========
+// ========== 核心功能 Tab 控制 ==========
 const mainTab = ref('repay-calc') // 默认显示房贷计算
 
-// ========== 原有房贷计算相关变量 ==========
+// ========== 原有房贷计算相关变量（完全保留） ==========
 const calcType = ref('normal')
 const showPrepaymentForm = computed(() => {
   return calcType.value === 'prepayment'
@@ -110,22 +117,19 @@ const yearlySummaries = ref([])
 const loading = ref(false)
 const showResult = ref(false)
 
-// ========== 事件处理函数 ==========
-// 优化：切换核心功能 Tab 时重置对应模块结果
+// ========== 事件处理函数（完全保留原有逻辑） ==========
 const handleMainTabChange = (tabName) => {
   // 切换到房贷 Tab 时重置房贷结果
   if (tabName === 'repay-calc') {
     handleReset()
   }
-  // 切换到收益/支出 Tab 时无需重置（保留用户输入）
+  // 切换到其他Tab时无需重置（保留用户输入）
 }
 
-// 原有：计算类型切换
 const handleCalcTypeChange = () => {
   handleReset()
 }
 
-// 原有：重置房贷计算结果
 const handleReset = () => {
   showResult.value = false
   Object.assign(summary, {
@@ -140,12 +144,11 @@ const handleReset = () => {
   yearlySummaries.value = []
 }
 
-// 原有：切换还款方式 Tab
 const handleTabChange = () => {
   handleReset()
 }
 
-// 原有：原生 AJAX 请求
+// 原有：原生 AJAX 请求（复用该方法，保持和房贷接口一致的请求方式）
 const requestPost = (url, data, success, error) => {
   const xhr = new XMLHttpRequest()
   xhr.open('POST', url, true)
@@ -238,7 +241,7 @@ const handleCalculate = (params) => {
   margin-left: 0;
 }
 
-/* 新增：多个核心Tab时的宽度适配 */
+/* 多个核心Tab时的宽度适配 */
 :deep(.el-tabs--card .el-tabs__item) {
   padding: 0 20px;
 }
@@ -253,5 +256,10 @@ const handleCalculate = (params) => {
     flex: 1 1 auto;
     text-align: center;
   }
+}
+
+/* 新增：应急能力计算组件样式适配 */
+:deep(.emergency-ability-container) {
+  padding: 10px 0;
 }
 </style>

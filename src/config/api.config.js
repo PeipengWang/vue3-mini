@@ -11,6 +11,7 @@ export const CONFIG = {
 // 可选：扩展其他配置（如接口路径、请求头）
 export const API_PATH = {
     repay: '/demo/api/repay', // 还款计算接口基础路径
-    income: '/demo/api/income/calculate',
+    income: '/demo/api/income/calculate', //收入计算接口
+    emergency: '/demo/api/emergency/calculate', //应急能力计算接口
     emergencyFund: '/demo/api/expense/calculateEmergencyFund' // 新增应急金计算接口
 }

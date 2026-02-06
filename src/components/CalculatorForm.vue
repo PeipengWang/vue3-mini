@@ -5,7 +5,6 @@
         :model="form"
         :rules="formRules"
         ref="formRef"
-        label-width="120px"
         size="default"
     >
       <!-- 贷款类型选择 -->
@@ -20,7 +19,7 @@
       <!-- 商业贷款参数：修复v-model绑定 -->
       <el-collapse v-model="activeBusinessPanel" :disabled="form.loanType === 'fund'">
         <el-collapse-item title="商业贷款参数" name="business">
-          <el-form-item label="商贷总额（元）" prop="businessLoanTotal">
+          <el-form-item label="商贷总额（元）" prop="businessLoanTotal" >
             <el-input
                 v-model.number="form.businessLoanTotal"
                 type="number"
@@ -350,7 +349,7 @@ const handleCalculate = async () => {
 
 /* Element Plus 卡片内边距：响应式调整 */
 :deep(.el-card__body) {
-  padding: 24px;
+  padding: 10px;
   /* 小屏（手机）时减小内边距，节省空间 */
   @media (max-width: 768px) {
     padding: 16px;
@@ -359,7 +358,8 @@ const handleCalculate = async () => {
 
 /* 表单项间距：响应式调整 */
 :deep(.el-form-item) {
-  margin-bottom: 20px;
+  margin-bottom: 40px;
+
   /* 小屏时减小间距，节省垂直空间 */
   @media (max-width: 768px) {
     margin-bottom: 16px;
@@ -377,6 +377,7 @@ const handleCalculate = async () => {
   padding: 16px;
   border-top: 1px solid #ebeef5;
 }
+
 
 /* 按钮区域：核心响应式布局 */
 .form-actions {

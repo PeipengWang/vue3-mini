@@ -195,7 +195,7 @@ const handleCalculate = (params) => {
       (res) => {
         loading.value = false
         Object.assign(summary, res)
-        monthlyDetails.value = res.fundMonthlyDetails || []
+        monthlyDetails.value = res.monthlyDetails || []
         debugger;
         yearlySummaries.value = res.fundYearSummaries || []
         showResult.value = true

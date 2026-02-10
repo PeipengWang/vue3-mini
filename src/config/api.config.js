@@ -2,8 +2,8 @@
 // 全局 API 配置（抽离后的独立文件）
 export const CONFIG = {
     // 后端接口基础地址（可根据环境切换）
-    baseURL: 'http://localhost:8080',
-    // baseURL: 'http://154.8.237.182:8080', // 测试环境（注释/取消注释切换）
+    // baseURL: 'http://localhost:8080',
+    baseURL: 'http://154.8.237.182:8080', // 测试环境（注释/取消注释切换）
     // 请求超时时间（毫秒）
     timeout: 5000
 }
